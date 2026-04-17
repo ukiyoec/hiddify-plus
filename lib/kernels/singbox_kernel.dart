@@ -70,10 +70,11 @@ class SingBoxKernel implements IKernelManager {
     _statusController.add(_status);
 
     try {
-      final configString = SingBoxConfigGenerator.generateConfig(
+      final configMap = SingBoxConfigGenerator.generateConfig(
         nodes: config.nodes,
         groups: config.groups,
       );
+      final configString = SingBoxConfigGenerator.toJsonString(configMap);
 
       _configPath = await _saveConfig(configString);
 

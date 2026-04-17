@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:dartx/dartx.dart';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
@@ -10,11 +11,12 @@ import 'package:hiddify/features/profile/model/profile_entity.dart';
 import 'package:hiddify/features/profile/model/profile_failure.dart';
 import 'package:hiddify/features/settings/data/config_option_repository.dart';
 import 'package:hiddify/singbox/model/singbox_proxy_type.dart';
-import 'package:hiddify/subscription_parser/models/models.dart';
+import 'package:hiddify/subscription_parser/models/models.dart' hide ProxyType, SubscriptionInfo;
 import 'package:hiddify/subscription_parser/parsers/parsers.dart';
 import 'package:hiddify/subscription_parser/services/services.dart';
 import 'package:hiddify/utils/utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
 /// Enhanced profile parser with support for multiple subscription formats
@@ -45,13 +47,15 @@ class EnhancedProfileParser {
   final Ref _ref;
   final DioHttpClient _httpClient;
   final SubscriptionService _subscriptionService;
+  final SubscriptionConverter _subscriptionConverter;
 
   EnhancedProfileParser({
     required Ref ref,
     required DioHttpClient httpClient,
   })  : _ref = ref,
         _httpClient = httpClient,
-        _subscriptionService = SubscriptionService(client: httpClient.client);
+        _subscriptionService = SubscriptionService(),
+        _subscriptionConverter = SubscriptionConverter();
 
   TaskEither<ProfileFailure, ProfileEntriesCompanion> addLocal({
     required String id,
@@ -456,29 +460,6 @@ class EnhancedProfileParser {
     return main;
   }
 
-  SubscriptionInfo? _parseSubscriptionInfo(String subInfoStr) {
-    final values = subInfoStr.split(';');
-    final map = {
-      for (final v in values) v.split('=').first.trim(): num.tryParse(v.split('=').second.trim())?.toInt()
-    };
-    if (map case {
-          "upload": final upload?,
-          "download": final download?,
-          "total": final total,
-          "expire": var expire
-        }) {
-      final total1 = (total == null || total == 0) ? infiniteTrafficThreshold + 1 : total;
-      expire = (expire == null || expire == 0) ? infiniteTimeThreshold : expire;
-      return SubscriptionInfo(
-        upload: upload,
-        download: download,
-        total: total1,
-        expire: DateTime.fromMillisecondsSinceEpoch(expire * 1000),
-      );
-    }
-    return null;
-  }
-
   ParsedSubscription parseSubscriptionContent(String content) {
     return ParserFactory.parse(content);
   }
@@ -497,22 +478,11 @@ class EnhancedProfileParser {
   }
 
   List<ProxyNode> mergeSubscriptions(List<String> contents) {
-    return SubscriptionConverter.mergeSubscriptions(contents);
+    return _subscriptionConverter.mergeSubscriptions(contents);
   }
 
   Map<String, List<ProxyNode>> splitByProtocol(List<ProxyNode> nodes) {
-    return SubscriptionConverter.splitByProtocol(nodes);
-  }
-
-  List<ProxyNode> filterByProtocol(List<ProxyNode> nodes, Set<ProxyType> allowedTypes) {
-    return SubscriptionConverter.filterByProtocol(
-      nodes,
-      allowedTypes.map((t) => _mapProxyType(t)).toSet(),
-    );
-  }
-
-  ProxyType _mapProxyType(ProxyType type) {
-    return type;
+    return _subscriptionConverter.splitByProtocol(nodes);
   }
 
   Future<ParsedSubscription> fetchAndParseSubscription(

@@ -1,3 +1,4 @@
+import 'package:hiddify/features/settings/data/config_option_data_providers.dart';
 import 'package:hiddify/features/settings/data/config_option_repository.dart';
 import 'package:hiddify/hiddifycore/hiddify_core_service_provider.dart';
 import 'package:hiddify/kernels/kernel_manager.dart';

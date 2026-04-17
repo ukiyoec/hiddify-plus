@@ -1,6 +1,9 @@
+import 'package:hiddify/kernel_updater/kernel_version_info.dart';
+import 'package:hiddify/subscription_parser/models/models.dart';
 import 'package:hiddify/subscription_parser/services/converter.dart';
 
 export 'package:hiddify/kernel_updater/kernel_version_info.dart' show KernelType;
+export 'package:hiddify/subscription_parser/models/models.dart' show ProxyNode, ProxyGroup, ProxyType, SubscriptionFormat;
 
 class ConfigConverter {
   static final ConfigConverter _instance = ConfigConverter._internal();
