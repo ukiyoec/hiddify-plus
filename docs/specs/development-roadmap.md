@@ -340,7 +340,7 @@ flutter test
 | `/workspace/hiddify-plus/` | 项目根目录 |
 | `/workspace/hiddify-plus/lib/` | Dart 源代码目录 |
 | `/workspace/hiddify-plus/pubspec.yaml` | Flutter 依赖配置 |
-| `/workspace/hiddify-plus/specs/` | 项目文档 |
+| `/workspace/hiddify-plus/docs/specs/` | 项目文档 |
 
 ### 新增模块
 | 路径 | 说明 |
@@ -353,6 +353,6 @@ flutter test
 ### 文档文件
 | 路径 | 说明 |
 |------|------|
-| `/workspace/hiddify-plus/specs/requirements.md` | 需求文档 |
-| `/workspace/hiddify-plus/specs/design.md` | 技术设计文档 |
-| `/workspace/hiddify-plus/specs/development-roadmap.md` | 开发路线文档 |
+| `/workspace/hiddify-plus/docs/specs/requirements.md` | 需求文档 |
+| `/workspace/hiddify-plus/docs/specs/design.md` | 技术设计文档 |
+| `/workspace/hiddify-plus/docs/specs/development-roadmap.md` | 开发路线文档 |
