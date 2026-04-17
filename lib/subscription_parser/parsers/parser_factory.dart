@@ -2,6 +2,10 @@ import '../models/models.dart';
 import 'base/parser.dart';
 import 'clash_parser.dart';
 import 'singbox_parser.dart';
+import 'surge_parser.dart';
+import 'quantumult_parser.dart';
+import 'loon_parser.dart';
+import 'wireguard_parser.dart';
 import 'uri_parser.dart';
 import 'v2ray_parser.dart';
 import 'format_detector.dart';
@@ -17,6 +21,10 @@ class ParserFactory {
     SubscriptionFormat.trojan: UriParser(),
     SubscriptionFormat.ss: UriParser(),
     SubscriptionFormat.ssr: UriParser(),
+    SubscriptionFormat.surge: SurgeParser(),
+    SubscriptionFormat.quan: QuantumultParser(),
+    SubscriptionFormat.loon: LoonParser(),
+    SubscriptionFormat.wireguard: WireGuardParser(),
   };
   
   static IProxyParser getParser(SubscriptionFormat format) {

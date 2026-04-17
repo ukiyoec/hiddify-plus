@@ -6,6 +6,26 @@ class FormatDetector {
   static SubscriptionFormat detect(String content) {
     final trimmed = content.trim();
     
+    // 0. 检测 Surge 格式 (INI-like)
+    if (_isSurgeFormat(trimmed)) {
+      return SubscriptionFormat.surge;
+    }
+    
+    // 0.5 检测 Quantumult 格式
+    if (_isQuantumultFormat(trimmed)) {
+      return SubscriptionFormat.quan;
+    }
+    
+    // 0.6 检测 Loon 格式
+    if (_isLoonFormat(trimmed)) {
+      return SubscriptionFormat.loon;
+    }
+    
+    // 0.7 检测 WireGuard 格式
+    if (_isWireGuardFormat(trimmed)) {
+      return SubscriptionFormat.wireguard;
+    }
+    
     // 1. 尝试 URI 解析
     if (_isUriFormat(trimmed)) {
       return _detectUriFormat(trimmed);
@@ -24,6 +44,31 @@ class FormatDetector {
     }
     
     return SubscriptionFormat.unknown;
+  }
+  
+  static bool _isSurgeFormat(String content) {
+    final lines = content.split('\n');
+    if (lines.isEmpty) return false;
+    
+    // Surge 格式以 [General] 节开始
+    return content.contains('[General]') && 
+           (content.contains('[Proxy]') || content.contains('[proxy]'));
+  }
+  
+  static bool _isQuantumultFormat(String content) {
+    return content.contains('[server_local]') || 
+           content.contains('[server_remote]');
+  }
+  
+  static bool _isLoonFormat(String content) {
+    return content.contains('[Proxy]') || 
+           content.contains('[Server]') ||
+           content.contains('[Proxy Group]') ||
+           content.contains('[Group]');
+  }
+  
+  static bool _isWireGuardFormat(String content) {
+    return content.contains('[Interface]') && content.contains('[Peer]');
   }
   
   static bool _isUriFormat(String content) {

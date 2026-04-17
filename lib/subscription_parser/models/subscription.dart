@@ -31,7 +31,8 @@ enum SubscriptionFormat {
   quanx,
   loon,
   ssd,
-  surfboard;
+  surfboard,
+  wireguard;
 
   String get key => name;
 

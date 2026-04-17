@@ -19,6 +19,7 @@ class UriParser implements IProxyParser {
            firstLine.startsWith('vless://') ||
            firstLine.startsWith('trojan://') ||
            firstLine.startsWith('ss://') ||
+           firstLine.startsWith('ssr://') ||
            firstLine.startsWith('trojan-go://');
   }
   
@@ -60,6 +61,8 @@ class UriParser implements IProxyParser {
       return _parseTrojan(uri);
     } else if (uri.startsWith('ss://')) {
       return _parseSs(uri);
+    } else if (uri.startsWith('ssr://')) {
+      return _parseSsr(uri);
     }
     
     return null;
@@ -362,6 +365,98 @@ class UriParser implements IProxyParser {
     }
   }
   
+  ProxyNode? _parseSsr(String uri) {
+    try {
+      final withoutScheme = uri.substring('ssr://'.length);
+      
+      // SSR 格式: method:password:protocol:obfs:url_base64(host:port:protocol_param:obfs_param:user_param)
+      // 或者直接是 base64 编码的字符串
+      
+      String decoded;
+      if (withoutScheme.contains('/')) {
+        // 有协议参数的完整格式
+        final parts = withoutScheme.split('/');
+        final params = parts.length > 1 ? parts[1] : '';
+        final protocolParams = _parseSsrParams(params);
+        
+        decoded = utf8.decode(base64Decode(withoutScheme.split('/').first + '=='));
+      } else {
+        decoded = utf8.decode(base64Decode(withoutScheme + '=='));
+      }
+      
+      final colonCount = ':'.allMatches(decoded).length;
+      if (colonCount < 4) return null;
+      
+      // 解析格式: method:password:protocol:obfs:url_base64(server:port:protocol_param:obfs_param)
+      final parts = decoded.split(':');
+      if (parts.length < 5) return null;
+      
+      final method = parts[0];
+      final password = parts[1];
+      final protocol = parts[2];
+      final obfs = parts[3];
+      
+      // 解析后半部分的 base64
+      String serverInfo = parts.sublist(4).join(':');
+      // 移除可能的 user_param
+      if (serverInfo.contains('#')) {
+        serverInfo = serverInfo.substring(0, serverInfo.indexOf('#'));
+      }
+      
+      String server;
+      int port;
+      String? protocolParam;
+      String? obfsParam;
+      
+      try {
+        final serverDecoded = utf8.decode(base64Decode(serverInfo + '=='));
+        final serverParts = serverDecoded.split(':');
+        if (serverParts.length >= 2) {
+          server = serverParts[0];
+          port = int.tryParse(serverParts[1]) ?? 0;
+          if (serverParts.length >= 3) protocolParam = serverParts[2];
+          if (serverParts.length >= 4) obfsParam = serverParts[3];
+        } else {
+          return null;
+        }
+      } catch (_) {
+        return null;
+      }
+      
+      return ProxyNode(
+        id: _uuid.v4(),
+        remark: 'SSR-$server:$port',
+        type: ProxyType.ssr,
+        server: server,
+        port: port,
+        username: method,
+        password: password,
+        protocolParam: protocolParam,
+        obfs: _normalizeObfs(obfs),
+        obfsParam: obfsParam,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+  
+  String? _parseSsrParams(String params) {
+    // 解析 SSR 参数，如 "protocol-param=xxx&obfs-param=xxx"
+    return params;
+  }
+  
+  String _normalizeObfs(String obfs) {
+    // 标准化 obfs 名称
+    if (obfs.contains('plain')) return 'plain';
+    if (obfs.contains('http_simple')) return 'http_simple';
+    if (obfs.contains('http_post')) return 'http_post';
+    if (obfs.contains('tls_simple')) return 'tls_simple';
+    if (obfs.contains('tls1_2_ticket_auth')) return 'tls1_2_ticket_auth';
+    if (obfs.contains('tls1_2_ticket_auth_compatible')) return 'tls1_2_ticket_auth_compatible';
+    if (obfs.contains('tls1_2_ticket_fastauth')) return 'tls1_2_ticket_fastauth';
+    return obfs;
+  }
+  
   @override
   String generate(List<ProxyNode> nodes, {SubscriptionFormat targetFormat = SubscriptionFormat.clash}) {
     final buffer = StringBuffer();
@@ -382,6 +477,9 @@ class UriParser implements IProxyParser {
           break;
         case ProxyType.ss:
           uri = _generateSs(node);
+          break;
+        case ProxyType.ssr:
+          uri = _generateSsr(node);
           break;
         default:
           uri = '# Unsupported type: ${node.type}';
@@ -462,6 +560,29 @@ class UriParser implements IProxyParser {
         url += ';${Uri.encodeComponent(node.pluginOptions!)}';
       }
     }
+    
+    url += '#${Uri.encodeComponent(node.remark)}';
+    return url;
+  }
+  
+  String _generateSsr(ProxyNode node) {
+    // SSR URI 格式: ssr://base64(method:password:protocol:obfs:url_base64(host:port:protocol_param:obfs_param))
+    final method = node.username ?? 'aes-256-cfb';
+    final password = node.password ?? '';
+    final protocol = 'origin';
+    final obfs = node.obfs ?? 'plain';
+    final protocolParam = node.protocolParam ?? '';
+    final obfsParam = node.obfsParam ?? '';
+    
+    // 构造服务器信息部分
+    final serverInfo = '$protocolParam:$obfsParam';
+    final serverInfoEncoded = base64Encode(utf8.encode(serverInfo));
+    
+    // 构造前半部分
+    final frontPart = '$method:$password:$protocol:$obfs:$serverInfoEncoded';
+    final frontEncoded = base64Encode(utf8.encode(frontPart));
+    
+    var url = 'ssr://${node.server}:${node.port}/$frontEncoded';
     
     url += '#${Uri.encodeComponent(node.remark)}';
     return url;
