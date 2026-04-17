@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hiddify/kernel_updater/kernel_updater.dart';
+import 'package:hiddify/kernel_updater/providers/update_settings_provider.dart';
 import 'package:hiddify/kernels/kernel_manager.dart';
 import 'package:hiddify/kernels/providers/kernel_providers.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -151,8 +152,8 @@ class _UpdateSettingsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final updaterService = KernelUpdaterService();
-    final settings = updaterService.settings;
+    final settings = ref.watch(updateSettingsProvider);
+    final settingsNotifier = ref.read(updateSettingsProvider.notifier);
 
     return Column(
       children: [
@@ -160,52 +161,25 @@ class _UpdateSettingsSection extends ConsumerWidget {
           title: const Text('Auto check updates'),
           subtitle: const Text('Automatically check for kernel updates'),
           value: settings.autoCheckEnabled,
-          onChanged: (value) {
-            updaterService.updateSettings(UpdateSettings(
-              autoCheckEnabled: value,
-              autoDownloadEnabled: settings.autoDownloadEnabled,
-              autoInstallEnabled: settings.autoInstallEnabled,
-              installOnStartup: settings.installOnStartup,
-              channel: settings.channel,
-              checkInterval: settings.checkInterval,
-            ));
-          },
+          onChanged: (value) => settingsNotifier.updateAutoCheck(value),
         ),
         SwitchListTile.adaptive(
           title: const Text('Auto download'),
           subtitle: const Text('Automatically download updates'),
           value: settings.autoDownloadEnabled,
-          onChanged: (value) {
-            updaterService.updateSettings(UpdateSettings(
-              autoCheckEnabled: settings.autoCheckEnabled,
-              autoDownloadEnabled: value,
-              autoInstallEnabled: settings.autoInstallEnabled,
-              installOnStartup: settings.installOnStartup,
-              channel: settings.channel,
-              checkInterval: settings.checkInterval,
-            ));
-          },
+          onChanged: (value) => settingsNotifier.updateAutoDownload(value),
         ),
         SwitchListTile.adaptive(
           title: const Text('Install on startup'),
           subtitle: const Text('Install updates when app starts'),
           value: settings.installOnStartup,
-          onChanged: (value) {
-            updaterService.updateSettings(UpdateSettings(
-              autoCheckEnabled: settings.autoCheckEnabled,
-              autoDownloadEnabled: settings.autoDownloadEnabled,
-              autoInstallEnabled: settings.autoInstallEnabled,
-              installOnStartup: value,
-              channel: settings.channel,
-              checkInterval: settings.checkInterval,
-            ));
-          },
+          onChanged: (value) => settingsNotifier.updateAutoInstall(value),
         ),
         ListTile(
           title: const Text('Check for updates now'),
           leading: const Icon(Icons.refresh_rounded),
           onTap: () async {
-            final updater = KernelUpdaterService();
+            final updater = ref.read(kernelUpdaterServiceProvider);
             for (final type in KernelType.values) {
               final update = await updater.checkForUpdate(type);
               if (update != null) {
