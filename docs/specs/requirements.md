@@ -69,11 +69,11 @@ Hiddify Plus (hiddify-plus)
 | VLESS | URL | ✓ | ✗ | ✅ 已实现 |
 | Trojan | URL | ✓ | ✗ | ✅ 已实现 |
 | Shadowsocks | URL | ✓ | ✓ | ✅ 已实现 |
-| ShadowsocksR | URL | ✓ | ✗ | ⏳ 待实现 |
-| Surge | CONF | ✓ | ✓ | ⏳ 待实现 |
-| Quantumult | CONF | ✓ | ✗ | ⏳ 待实现 |
-| Loon | CONF | ✓ | ✗ | ⏳ 待实现 |
-| WireGuard | INI/JSON | ✓ | ✗ | ⏳ 待实现 |
+| ShadowsocksR | URL | ✓ | ✓ | ✅ 已实现 |
+| Surge | CONF | ✓ | ✓ | ✅ 已实现 |
+| Quantumult | CONF | ✓ | ✓ | ✅ 已实现 |
+| Loon | CONF | ✓ | ✓ | ✅ 已实现 |
+| WireGuard | INI/JSON | ✓ | ✓ | ✅ 已实现 |
 
 #### 订阅解析
 - 系统 SHALL 解析 HTTP/HTTPS 远程订阅链接
