@@ -4,6 +4,58 @@
 
 ---
 
+## 零、原版 Hiddify 应用信息 (Fork Source)
+
+hiddify-plus 是从原版 [Hiddify](https://github.com/hiddify/hiddify-app) 项目 fork 增强而来。
+
+### 原版应用信息
+
+| 属性 | 值 |
+|------|-----|
+| 原版仓库 | https://github.com/hiddify/hiddify-app |
+| 原版名称 | Hiddify |
+| 原版最新稳定版本 | v4.1.2 |
+| 原版最新 Release | v4.1.1 (2026-03-05) |
+| 原版 Stars | 28,713 |
+| 原版 Forks | 2,557 |
+| 原版描述 | Multi-platform auto-proxy client, supporting Sing-box, X-ray, TUIC, Hysteria, Reality, Trojan, SSH etc. |
+
+### 原版技术栈
+
+| 组件 | 版本/信息 |
+|------|----------|
+| Flutter | 3.38.5 |
+| 原版包名 | app.hiddify.com |
+| 原版架构 | 单内核 (主要基于 sing-box) |
+| 原版发布平台 | Android, Windows, macOS, Linux |
+
+### hiddify-core Submodule
+
+| 属性 | 值 |
+|------|-----|
+| Submodule 路径 | hiddify-core |
+| 原版仓库 | https://github.com/hiddify/hiddify-core |
+| Submodule 分支 | v3 |
+| 原版 Stars | 185 |
+| 原版 Forks | 140 |
+
+### Fork 目的
+
+hiddify-plus 在原版基础上进行以下增强：
+
+1. **多内核支持** - 支持 sing-box、Clash.Meta、v2ray 多种内核
+2. **增强订阅解析** - 支持更多订阅格式的解析和转换
+3. **配置转换器** - 实现不同内核配置格式的互相转换
+4. **内核更新服务** - 支持内核版本管理和自动更新
+
+### 版本对照表
+
+| hiddify-plus 版本 | 基于原版版本 | 主要变更 |
+|------------------|-------------|---------|
+| 1.0.0 | v4.1.2 | 初始 fork，增强多内核支持 |
+
+---
+
 ## 一、Flutter SDK 配置
 
 | 属性 | 值 |
