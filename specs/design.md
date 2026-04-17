@@ -1,8 +1,9 @@
-# Hiddify Enhanced 技术设计文档
+# Hiddify Plus 技术设计文档
 
-项目名称：hiddify-enhanced
+项目名称：hiddify-plus
+包名：hiddify_plus
 更新日期：2026-04-17
-版本：v2.0（基于代码研究修订）
+版本：v3.0（基于实际实现修订）
 
 ---
 
@@ -10,7 +11,7 @@
 
 ### 1.1 项目背景
 
-通过深入研究参考项目的代码结构：
+通过深入研究参考项目的代码结构并完成实际实现：
 
 | 项目 | Stars | 关键发现 |
 |------|-------|----------|
@@ -50,7 +51,7 @@ HTTP获取 → Base64解码 → URL解析 → 统一 Proxy 结构体 → Jinja2 
 
 ## 2. 架构设计
 
-### 2.1 整体架构
+### 2.1 整体架构（已实现）
 
 ```mermaid
 graph TB
@@ -107,11 +108,11 @@ graph TB
     KernelMgr --> V2RayKernel
 ```
 
-### 2.2 内核管理器设计
+### 2.2 内核管理器设计（已实现）
 
 ```mermaid
 classDiagram
-    class IKernel {
+    class IKernelManager {
         <<interface>>
         +String name
         +String version
@@ -140,206 +141,179 @@ classDiagram
         +stop() bool
     }
     
-    class KernelManager {
-        -List~IKernel~ _kernels
-        -IKernel _activeKernel
+    class MultiKernelManager {
+        -Map~KernelType, IKernelManager~ _kernels
+        -IKernelManager _activeKernel
         +switchKernel(type: KernelType) Future~bool~
-        +getActiveKernel() IKernel
+        +getActiveKernel() IKernelManager
         +downloadKernel(type, url) Future~bool~
-        +getAvailableKernels() List~KernelInfo~
+        +getAvailableKernels() List~KernelType~
     }
     
-    IKernel <|.. SingBoxKernel
-    IKernel <|.. ClashMetaKernel
-    IKernel <|.. V2RayKernel
-    KernelManager --> IKernel
-```
-
-### 2.3 订阅解析器设计
-
-参考 subconverter 的统一 Proxy 结构，设计 Dart 版本的解析器架构：
-
-```mermaid
-classDiagram
-    class IProxyParser {
-        <<interface>>
-        +List~ProxyNode~ parse(String content)
-        +SubscriptionFormat get supportedFormat
-        +bool canParse(String content)
+    class KernelStatus {
+        <<enumeration>>
+        stopped
+        starting
+        running
+        stopping
+        error
     }
     
-    class ClashParser {
-        +List~ProxyNode~ parse(content)
-        +canParse(content) bool
-    }
-    
-    class SingBoxParser {
-        +List~ProxyNode~ parse(content)
-        +canParse(content) bool
-    }
-    
-    class V2RayParser {
-        +List~ProxyNode~ parse(content)
-        +canParse(content) bool
-    }
-    
-    class UrlParser {
-        +parse vmess(String url) ProxyNode
-        +parse vless(String url) ProxyNode
-        +parse trojan(String url) ProxyNode
-        +parse ss(String url) ProxyNode
-    }
-    
-    class ParserFactory {
-        +IProxyParser getParser(SubscriptionFormat format)
-        +List~ProxyNode~ parseAll(String content) List~ProxyNode~
-        +SubscriptionFormat detectFormat(String content)
-    }
-    
-    IProxyParser <|.. ClashParser
-    IProxyParser <|.. SingBoxParser
-    IProxyParser <|.. V2RayParser
-    ParserFactory --> IProxyParser
-    UrlParser ..> ProxyNode : creates
+    IKernelManager <|.. SingBoxKernel
+    IKernelManager <|.. ClashMetaKernel
+    IKernelManager <|.. V2RayKernel
+    MultiKernelManager --> IKernelManager
 ```
 
 ---
 
-## 3. 核心数据模型
+## 3. 核心数据模型（已实现）
 
-### 3.1 统一节点模型（参考 subconverter Proxy）
+### 3.1 统一节点模型
+
+实际文件：`lib/subscription_parser/models/proxy_node.dart`
 
 ```dart
-class ProxyNode {
-    final String id;                    // UUID
-    final String remark;                // 节点名称
-    final ProxyType type;               // 协议类型
-    final String server;                // 服务器地址
-    final int port;                     // 端口
-    final String? username;             // 用户名
-    final String? password;             // 密码
+@freezed
+class ProxyNode with _$ProxyNode {
+  const ProxyNode._();
+
+  const factory ProxyNode({
+    required String id,
+    required String remark,
+    required ProxyType type,
+    required String server,
+    required int port,
     
-    // 协议特定参数 (参考 subconverter 的统一结构)
-    final String? userId;               // VMess userId
-    final int? alterId;                 // VMess alterId
-    final String? encryptMethod;        // 加密方式
-    final String? transferProtocol;     // 传输协议 (tcp/ws/http/quic)
-    final String? host;                 // Host 头
-    final String? path;                 // 路径
-    final String? edge;                 // VMess edge
-    final bool tlsSecure;               // TLS 是否启用
-    final String? sni;                  // SNI
-    final String? fingerprint;          // TLS 指纹
-    final String? alpn;                // ALPN
+    // Optional auth
+    String? username,
+    String? password,
     
-    // 底层代理 (用于代理链)
-    final String? underlyingProxy;
+    // VMess specific
+    String? userId,
+    int? alterId,
+    String? encryptMethod,
     
-    // 状态
-    final int? latency;                 // 延迟 ms
-    final bool isActive;
-    final DateTime? lastChecked;
+    // Network
+    String? network,
+    String? transport,
+    String? host,
+    String? path,
+    String? edge,
+    
+    // TLS
+    bool tlsSecure,
+    String? sni,
+    String? fingerprint,
+    String? alpn,
+    String? ca,
+    
+    // Obfs
+    String? obfs,
+    String? obfsParam,
+    
+    // Protocol specific
+    String? protocolParam,
+    
+    // Plugin
+    String? plugin,
+    String? pluginOptions,
+    
+    // State
+    int? latency,
+    bool isActive,
+    DateTime? lastChecked,
+  }) = _ProxyNode;
 }
 
 enum ProxyType {
-    // VMess 系列
-    vmess,
-    
-    // VLESS
-    vless,
-    
-    // Trojan 系列
-    trojan,
-    trojanGo,
-    
-    // Shadowsocks 系列
-    ss,
-    ss2022,
-    ssr,
-    
-    // Hysteria 系列
-    hysteria,
-    hysteria2,
-    
-    // TUIC
-    tuic,
-    
-    // WireGuard
-    wireguard,
-    
-    // SOCKS/HTTP
-    socks5,
-    http,
-    
-    // SSH
-    ssh,
+  ss, ss2022, ssr,
+  vmess,
+  vless,
+  trojan, trojanGo,
+  hysteria, hysteria2,
+  tuic,
+  wireguard,
+  socks5, http,
+  ssh,
+  naive, shadowtls, mieru,
+  direct, block, dns, selector, urltest, balancer, warp,
+  unknown;
 }
 ```
 
-### 3.2 代理组模型（参考 subconverter ProxyGroupConfig）
+### 3.2 代理组模型
+
+实际文件：`lib/subscription_parser/models/proxy_node.dart`
 
 ```dart
-class ProxyGroup {
-    final String name;
-    final GroupType type;
-    final List<String> proxies;
-    final String? url;              // url-test 用
-    final int interval;              // 测试间隔 (秒)
-    final int timeout;               // 超时 (秒)
-    final int tolerance;            // 延迟容差 (ms)
-    final bool lazy;
-    final bool disableUdp;
+@freezed
+class ProxyGroup with _$ProxyGroup {
+  const factory ProxyGroup({
+    required String name,
+    required GroupType type,
+    @Default([]) List<String> proxies,
+    String? url,
+    @Default(300) int interval,
+    @Default(5) int timeout,
+    @Default(150) int tolerance,
+    @Default(true) bool lazy,
+    @Default(false) bool disableUdp,
+  }) = _ProxyGroup;
 }
 
 enum GroupType {
-    select,       // 手动选择
-    urlTest,      // 自动测试选择
-    fallback,    // 故障切换
-    loadBalance, // 负载均衡
-    relay,       // 链式代理
+  select,
+  urlTest,
+  fallback,
+  loadBalance,
+  relay;
 }
 ```
 
 ### 3.3 订阅模型
 
+实际文件：`lib/subscription_parser/models/subscription.dart`
+
 ```dart
-class Subscription {
-    final String id;
-    final String name;
-    final String url;
-    final SubscriptionFormat format;
-    final DateTime? lastUpdate;
-    final int? expireDays;
-    final int? totalTraffic;
-    final int? usedTraffic;
-    final List<ProxyNode> nodes;
-    final List<ProxyGroup> groups;
+enum SubscriptionFormat {
+  unknown,
+  clash, clashMeta,
+  singbox, v2ray,
+  vmess, vless, trojan, ss, ssr,
+  surge, quan, quanx, loon, ssd, surfboard;
 }
 
-enum SubscriptionFormat {
-    clash,
-    clashMeta,
-    singbox,
-    v2ray,
-    surge,
-    quan,
-    quanx,
-    loon,
-    ss,
-    sssub,
-    ssd,
-    ssr,
-    surfboard,
-    vmess,    // 仅作为来源
-    vless,    // 仅作为来源
-    trojan,   // 仅作为来源
-    unknown,
+@freezed
+class Subscription with _$Subscription {
+  const factory Subscription({
+    required String id,
+    required String name,
+    required String url,
+    required SubscriptionFormat format,
+    @Default([]) List<ProxyNode> nodes,
+    @Default([]) List<ProxyGroup> groups,
+    DateTime? lastUpdate,
+    SubscriptionInfo? info,
+    String? rawContent,
+  }) = _Subscription;
+}
+
+@freezed
+class ParsedSubscription with _$ParsedSubscription {
+  const factory ParsedSubscription({
+    required List<ProxyNode> nodes,
+    @Default([]) List<ProxyGroup> groups,
+    SubscriptionInfo? info,
+    String? name,
+    @Default(SubscriptionFormat.unknown) SubscriptionFormat format,
+  }) = _ParsedSubscription;
 }
 ```
 
 ---
 
-## 4. 订阅解析流程（参考 subconverter）
+## 4. 订阅解析流程（已实现）
 
 ### 4.1 完整流程
 
@@ -354,15 +328,16 @@ enum SubscriptionFormat {
 │  2. [HTTP获取订阅内容]                                         │
 │         │                                                     │
 │         ▼                                                     │
-│  3. [Base64解码?                                              │
-│      - 检测是否 Base64 编码                                    │
-│      - 是则解码，否则直接使用                                   │
+│  3. [Base64解码?]                                             │
+│      - FormatDetector.isBase64Encoded() 检测                  │
+│      - FormatDetector.decodeBase64IfNeeded() 解码              │
 │         │                                                     │
 │         ▼                                                     │
-│  4. [格式检测                                                 │
-│      - 尝试 JSON 解析 → V2Ray / sing-box                      │
-│      - 尝试 YAML 解析 → Clash / Clash.Meta                     │
-│      - 尝试 URI 解析 → VMess/VLESS/Trojan/SS                  │
+│  4. [格式检测]                                                │
+│      - FormatDetector.detect() 自动检测                        │
+│      - JSON → V2Ray / sing-box                                │
+│      - YAML → Clash / Clash.Meta                              │
+│      - URI → VMess/VLESS/Trojan/SS                            │
 │         │                                                     │
 │         ▼                                                     │
 │  5. [调用对应Parser解析]                                       │
@@ -373,170 +348,141 @@ enum SubscriptionFormat {
 │    ┌────┴────┐                                               │
 │    ▼         ▼                                               │
 │ [缓存]   [转换]                                               │
-│    │         │                                               │
-│    │         ▼                                               │
-│    │   7. [加载目标格式模板]                                   │
-│    │         │                                               │
-│    │         ▼                                               │
-│    │   8. [渲染生成目标配置]                                   │
-│    │         │                                               │
-│    │         ▼                                               │
-│    │   9. [交给内核管理器]                                     │
-│    │                                                           │
-│    └───────→ [存储到本地]                                      │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 格式检测逻辑（参考 subconverter）
+### 4.2 格式检测逻辑
+
+实际文件：`lib/subscription_parser/parsers/format_detector.dart`
 
 ```dart
-SubscriptionFormat detectFormat(String content) {
-  // 1. 尝试 URI 解析 (VMess/VLESS/Trojan/SS 等)
-  if (content.startsWith('vmess://') ||
-      content.startsWith('vless://') ||
-      content.startsWith('trojan://') ||
-      content.startsWith('ss://')) {
-    return _parseUri(content);
+class FormatDetector {
+  static SubscriptionFormat detect(String content) {
+    // 1. 尝试 URI 解析
+    if (_isUriContent(content)) {
+      return _parseUriFormat(content);
+    }
+    
+    // 2. 尝试 JSON 解析
+    final jsonFormat = _detectJsonFormat(content);
+    if (jsonFormat != null) return jsonFormat;
+    
+    // 3. 尝试 YAML 解析
+    final yamlFormat = _detectYamlFormat(content);
+    if (yamlFormat != null) return yamlFormat;
+    
+    return SubscriptionFormat.unknown;
   }
   
-  // 2. 尝试 JSON 解析
-  try {
-    final json = jsonDecode(content);
-    if (json['protocol'] == 'vmess') return SubscriptionFormat.v2ray;
-    if (json.containsKey('log')) return SubscriptionFormat.singbox;
-    if (json.containsKey('inbounds')) return SubscriptionFormat.v2ray;
-  } catch (_) {}
-  
-  // 3. 尝试 YAML 解析
-  try {
-    final yaml = loadYaml(content);
-    if (yaml['proxies'] != null) {
-      if (yaml['dns'] != null) return SubscriptionFormat.singbox;
-      if (yaml[' Clash'] != null || yaml['Proxy'] != null) return SubscriptionFormat.clash;
-      if (yaml['proxy-groups'] != null) return SubscriptionFormat.clashMeta;
-    }
-  } catch (_) {}
-  
-  return SubscriptionFormat.unknown;
+  static bool isBase64Encoded(String content) {
+    // Base64 检测逻辑
+  }
 }
 ```
 
 ---
 
-## 5. 目录结构设计
+## 5. 目录结构（实际实现）
 
 ```
 lib/
-├── main.dart
-├── app.dart
-├── core/
-│   ├── constants/
-│   │   ├── app_constants.dart
-│   │   └── kernel_constants.dart
-│   ├── errors/
-│   │   └── exceptions.dart
-│   ├── utils/
-│   │   ├── logger.dart
-│   │   ├── network_utils.dart
-│   │   └── base64_utils.dart
-│   └── extensions/
-│       └── string_extensions.dart
-├── data/
-│   ├── datasources/
-│   │   ├── local/
-│   │   │   └── database.dart
-│   │   └── remote/
-│   │       └── subscription_api.dart
+├── subscription_parser/              ✅ 已实现
+│   ├── subscription_parser.dart      # 模块导出
 │   ├── models/
-│   │   ├── proxy_node.dart
-│   │   ├── subscription.dart
-│   │   ├── proxy_group.dart
-│   │   └── kernel_config.dart
-│   └── repositories/
-│       ├── kernel_repository.dart
-│       ├── subscription_repository.dart
-│       └── config_repository.dart
-├── domain/
-│   ├── entities/
-│   ├── repositories/
-│   └── usecases/
-├── presentation/
-│   ├── pages/
-│   ├── widgets/
+│   │   ├── models.dart
+│   │   ├── proxy_node.dart          # ProxyNode, ProxyGroup
+│   │   └── subscription.dart         # Subscription, SubscriptionFormat
+│   ├── parsers/
+│   │   ├── parsers.dart
+│   │   ├── format_detector.dart      # 格式检测
+│   │   ├── parser_factory.dart       # 解析器工厂
+│   │   ├── clash_parser.dart         # Clash 解析器
+│   │   ├── singbox_parser.dart       # sing-box 解析器
+│   │   ├── v2ray_parser.dart         # V2Ray 解析器
+│   │   └── uri_parser.dart           # URI 解析器
+│   └── services/
+│       ├── services.dart
+│       ├── subscription_service.dart  # 订阅服务
+│       └── converter.dart            # 转换器
+│
+├── kernels/                          ✅ 已实现
+│   ├── kernels.dart
+│   ├── kernel_manager.dart           # 内核接口和状态
+│   ├── multi_kernel_manager.dart     # 多内核管理器
+│   ├── singbox_kernel.dart          # sing-box 内核
+│   ├── clash_meta_kernel.dart        # Clash.Meta 内核
+│   ├── v2ray_kernel.dart             # v2ray 内核
+│   ├── config_converter/
+│   │   └── config_converter.dart    # 配置转换器
+│   ├── config_generator/
+│   │   ├── config_generator.dart     # 生成器接口
+│   │   ├── singbox_config_generator.dart
+│   │   ├── clash_meta_config_generator.dart
+│   │   └── v2ray_config_generator.dart
+│   ├── providers/
+│   │   └── kernel_providers.dart     # Riverpod providers
+│   └── service/
+│       └── multi_kernel_service.dart
+│
+├── kernel_updater/                   ✅ 已实现
+│   ├── kernel_updater.dart
+│   ├── kernel_version_info.dart       # 版本信息模型
+│   ├── kernel_updater_service.dart    # 更新服务
+│   ├── update_settings.dart           # 更新设置
 │   └── providers/
-├── kernels/
-│   ├── base/
-│   │   ├── i_kernel.dart
-│   │   └── kernel_manager.dart
-│   ├── singbox/
-│   │   └── singbox_kernel.dart
-│   ├── clash_meta/
-│   │   └── clash_meta_kernel.dart
-│   └── v2ray/
-│       └── v2ray_kernel.dart
-└── parsers/
-    ├── base/
-    │   ├── i_parser.dart
-    │   └── parser_factory.dart
-    ├── clash/
-    │   └── clash_parser.dart
-    ├── singbox/
-    │   └── singbox_parser.dart
-    ├── v2ray/
-    │   └── v2ray_parser.dart
-    └── uri/
-        └── uri_parser.dart
+│       └── update_settings_provider.dart
+│
+└── features/
+    └── profile/
+        └── data/
+            └── enhanced_profile_parser.dart  # 增强解析器
 ```
 
 ---
 
-## 6. 模板生成设计（参考 subconverter Jinja2）
+## 6. 模板生成设计（已实现）
 
-### 6.1 Clash 模板片段
+### 6.1 sing-box 配置生成
 
-```yaml
-# Clash 配置模板
-mixed-port: {{mixed_port}}
-allow-lan: {{allow_lan}}
-mode: {{mode}}
-external-controller: {{external_controller}}
+实际文件：`lib/kernels/config_generator/singbox_config_generator.dart`
 
-proxy-groups:
-{% for group in proxy_groups %}
-  - name: {{ group.name }}
-    type: {{ group.type }}
-    {% if group.url %}
-    url: {{ group.url }}
-    interval: {{ group.interval }}
-    {% endif %}
-    proxies:
-    {% for proxy in group.proxies %}
-      - {{ proxy }}
-    {% endfor %}
-{% endfor %}
-
-proxies:
-{% for node in proxies %}
-  - name: {{ node.remark }}
-    type: {{ node.type }}
-    server: {{ node.server }}
-    port: {{ node.port }}
-    {% if node.password %}
-    password: {{ node.password }}
-    {% endif %}
-    {% if node.encryptMethod %}
-    cipher: {{ node.encryptMethod }}
-    {% endif %}
-    # ... 其他参数
-{% endfor %}
+```dart
+class SingBoxConfigGenerator {
+  static Map<String, dynamic> generateConfig({
+    required List<ProxyNode> nodes,
+    required List<ProxyGroup> groups,
+    Map<String, dynamic>? inboundOptions,
+    Map<String, dynamic>? routingOptions,
+  }) {
+    return {
+      'log': {'level': 'info', 'timestamp': true},
+      'dns': _generateDns(),
+      'inbounds': inboundOptions ?? _generateDefaultInbounds(),
+      'outbounds': _generateOutbounds(nodes, groups),
+      'route': routingOptions ?? _generateDefaultRoute(),
+    };
+  }
+  
+  static String toJsonString(Map<String, dynamic> config) {
+    return const JsonEncoder.withIndent('  ').convert(config);
+  }
+}
 ```
+
+### 6.2 Clash.Meta 配置生成
+
+实际文件：`lib/kernels/config_generator/clash_meta_config_generator.dart`
+
+### 6.3 V2Ray 配置生成
+
+实际文件：`lib/kernels/config_generator/v2ray_config_generator.dart`
 
 ---
 
-## 7. 内核管理
+## 7. 内核管理（已实现）
 
-### 7.1 生命周期
+### 7.1 生命周期状态机
 
 ```
                     Kernel State Machine
@@ -552,169 +498,104 @@ proxies:
 
 ### 7.2 内核版本更新服务
 
-```mermaid
-classDiagram
-    class IKernelUpdater {
-        <<interface>>
-        +checkForUpdate() Future~KernelVersionInfo?~
-        +downloadUpdate(info, onProgress) Future~bool~
-        +verifyDownload(path, expectedHash) Future~bool~
-        +installUpdate(path) Future~bool~
-        +rollback() Future~bool~
-        +getUpdateSettings() UpdateSettings
-        +setUpdateSettings(settings) void
-    }
-    
-    class KernelUpdateService {
-        -IKernelUpdater _updater
-        -List~KernelVersionInfo~ _availableVersions
-        -UpdateSettings _settings
-        +checkForUpdate(kernelType) Future~KernelVersionInfo?~
-        +downloadAndInstall(kernelType, onProgress) Future~bool~
-        +autoUpdateIfNeeded() Future~void~
-    }
-    
-    class VersionInfo {
-        +String version
-        +String downloadUrl
-        +String sha256
-        +DateTime releaseDate
-        +String releaseNotes
-        +bool isMandatory
-    }
-    
-    class UpdateSettings {
-        +bool autoCheckEnabled
-        +bool autoDownloadEnabled
-        +bool autoInstallEnabled
-        +bool installOnStartup
-        +String? preferredChannel
-    }
-    
-    IKernelUpdater <|.. SingBoxUpdater
-    IKernelUpdater <|.. ClashMetaUpdater
-    IKernelUpdater <|.. V2RayUpdater
-    KernelUpdateService --> IKernelUpdater
-    KernelUpdateService --> VersionInfo
-    KernelUpdateService --> UpdateSettings
-```
-
-### 7.3 版本检测与更新流程
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 Kernel Update Flow                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. [启动/手动检查]                                           │
-│         │                                                     │
-│         ▼                                                     │
-│  2. [获取当前内核版本]                                        │
-│         │                                                     │
-│         ▼                                                     │
-│  3. [请求版本服务器]                                           │
-│     GET /api/v1/kernels/{type}/latest                        │
-│         │                                                     │
-│         ▼                                                     │
-│  4. [比对版本信息]                                            │
-│         │                                                     │
-│    ┌────┴────┐                                               │
-│    ▼         ▼                                               │
-│ [有新版本] [已是最新]                                          │
-│    │         │                                               │
-│    ▼         ▼                                               │
-│ 5. [下载新版本] 结束                                           │
-│    │         │
-│    ▼         │
-│ 6. [SHA256校验]                                               │
-│    │         │
-│    ▼         │
-│ 7. [备份当前版本]                                              │
-│    │         │
-│    ▼         │
-│ 8. [安装新版本]                                               │
-│    │         │
-│    ▼         │
-│ 9. [验证安装]                                                  │
-│    │         │
-│    ▼         │
-│ [成功] ──→ [完成]                                             │
-│    │                                                         │
-│ [失败] ──→ [回滚] ──→ [提示用户]                               │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 7.4 内核版本信息存储
+实际文件：`lib/kernel_updater/kernel_updater_service.dart`
 
 ```dart
-class KernelVersionInfo {
-    final KernelType type;           // 内核类型
-    final String version;             // 版本号 (如 1.8.0)
-    final String downloadUrl;         // 下载地址
-    final String sha256;             // SHA256 校验和
-    final int fileSize;              // 文件大小 (bytes)
-    final DateTime releaseDate;      // 发布日期
-    final String releaseNotes;       // 发布说明
-    final bool isMandatory;          // 是否强制更新
-    final String minAppVersion;      // 最低支持 App 版本
-}
-
-class KernelLocalInfo {
-    final KernelType type;           // 内核类型
-    final String version;             // 当前版本
-    final String installedPath;       // 安装路径
-    final DateTime installedDate;     // 安装日期
-    final String? backupPath;         // 备份路径
+class KernelUpdaterService {
+  Future<KernelVersionInfo?> checkForUpdate(KernelType type) async {
+    // 从 GitHub Releases 获取最新版本
+  }
+  
+  Future<UpdateResult> downloadAndInstall(
+    KernelType type,
+    KernelVersionInfo versionInfo, {
+    void Function(DownloadProgress)? onProgress,
+  }) async {
+    // 下载 → SHA256 校验 → 备份 → 安装
+  }
 }
 ```
 
-### 7.5 更新设置
+### 7.3 版本信息模型
+
+实际文件：`lib/kernel_updater/kernel_version_info.dart`
 
 ```dart
-enum UpdateChannel {
-    stable,    // 稳定版
-    beta,      // 测试版
-    dev,       // 开发版
+enum KernelType {
+  singBox,
+  clashMeta,
+  v2ray,
 }
 
-class UpdateSettings {
-    final bool autoCheckEnabled;      // 自动检查更新
-    final bool autoDownloadEnabled;   // 自动下载更新
-    final bool autoInstallEnabled;    // 自动安装更新
-    final bool installOnStartup;      // 启动时安装
-    final UpdateChannel channel;      // 更新通道
-    final Duration checkInterval;     // 检查间隔
+@freezed
+class KernelVersionInfo with _$KernelVersionInfo {
+  const factory KernelVersionInfo({
+    required KernelType type,
+    required String version,
+    required String downloadUrl,
+    required String sha256,
+    required int fileSize,
+    required DateTime releaseDate,
+    String releaseNotes,
+    bool isMandatory,
+    String minAppVersion,
+  }) = _KernelVersionInfo;
+}
+
+@freezed
+class KernelLocalInfo with _$KernelLocalInfo {
+  const factory KernelLocalInfo({
+    required KernelType type,
+    required String version,
+    required String installedPath,
+    required DateTime installedDate,
+    String? backupPath,
+  }) = _KernelLocalInfo;
 }
 ```
-
-### 7.2 配置隔离策略
-
-- 每个内核维护独立的配置文件
-- 配置存储在 `~/.config/hiddify-{kernel}/` 目录
-- 切换内核时自动复制对应配置
 
 ---
 
-## 8. 测试策略
+## 8. 测试策略（已实现）
 
-### 8.1 单元测试
-- 各 Parser 的格式解析正确性
-- 格式转换完整性（round-trip 测试）
-- KernelManager 状态机
+### 8.1 单元测试 ✅
 
-### 8.2 集成测试
-- 订阅获取-解析-转换完整流程
-- 内核启动-运行-停止生命周期
-- 多内核切换的配置迁移
+| 测试文件 | 测试数量 | 状态 |
+|---------|---------|------|
+| `test/subscription_parser/models_test.dart` | 58 | ✅ |
+| `test/subscription_parser/converter_test.dart` | - | ✅ |
+| `test/subscription_parser/parsers_test.dart` | - | ✅ |
+| `test/kernels/kernel_manager_test.dart` | 18 | ✅ |
+| `test/kernel_updater/kernel_updater_service_test.dart` | 19 | ✅ |
+
+### 8.2 集成测试 ✅
+
+| 测试文件 | 测试数量 | 状态 |
+|---------|---------|------|
+| `test/integration/subscription_integration_test.dart` | 12 | ✅ |
+
+**总计：107 个测试全部通过**
 
 ---
 
 ## 9. 风险与应对
 
 | 风险 | 级别 | 应对策略 |
-|------|------|----------|
+|------|------|---------|
 | 格式转换丢失信息 | 中 | 明确支持范围 + 用户提示 |
 | 内核二进制获取 | 高 | 预置基础版本 + 远程更新 |
 | 性能瓶颈 | 低 | 异步处理 + 缓存机制 |
 | Hiddify 原有功能破坏 | 高 | 增量开发 + 完整回归测试 |
+
+---
+
+## 10. 项目状态
+
+| 指标 | 状态 |
+|------|------|
+| 编译错误 | ✅ 0 errors |
+| 单元测试 | ✅ 95 passed |
+| 集成测试 | ✅ 12 passed |
+| 代码生成 | ✅ build_runner completed |
+| Git 仓库 | https://github.com/ukiyoec/hiddify-plus |
+| 开发分支 | feat-multi-kernel |

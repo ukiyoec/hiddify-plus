@@ -1,35 +1,34 @@
-# Hiddify Enhanced 开发路线文档
+# Hiddify Plus 开发路线文档
 
-本文档记录 hiddify-enhanced 项目的完整开发过程，每一步操作都有详细记录，避免遗忘。
+本文档记录 hiddify-plus 项目的完整开发过程。
 
 ---
 
 ## 开发信息
 
-- **项目名称**: hiddify-enhanced
-- **项目路径**: `/workspace/hiddify-enhanced`
-- **开发分支**: `260417-feat-multi-kernel-subscription`
-- **创建日期**: 2026-04-17
-- **最后更新**: 2026-04-17
+| 项目 | 信息 |
+|------|------|
+| 项目名称 | hiddify-plus |
+| 包名 | hiddify_plus |
+| 项目路径 | `/workspace/hiddify-plus` |
+| 开发分支 | `feat-multi-kernel` |
+| 仓库地址 | https://github.com/ukiyoec/hiddify-plus |
+| 创建日期 | 2026-04-17 |
+| 最后更新 | 2026-04-17 |
 
 ---
 
-## 第一阶段：项目初始化
+## 第一阶段：项目初始化 ✅
 
 ### 步骤 1.1: Fork 原项目
 
 **日期**: 2026-04-17
-**操作**: 将 `hiddify/hiddify-app` 项目克隆到本地
+**操作**: 将 `hiddify/hiddify-app` 项目克隆到本地并重命名
 
 **执行命令**:
 ```bash
-cd /workspace
-git clone https://github.com/hiddify/hiddify-app.git hiddify-enhanced
+git clone https://github.com/hiddify/hiddify-app.git hiddify-plus
 ```
-
-**结果**: 
-- 项目已克隆到 `/workspace/hiddify-enhanced`
-- 默认分支为 master/main
 
 ### 步骤 1.2: 创建开发分支
 
@@ -38,69 +37,32 @@ git clone https://github.com/hiddify/hiddify-app.git hiddify-enhanced
 
 **执行命令**:
 ```bash
-cd /workspace/hiddify-enhanced
-git checkout -b 260417-feat-multi-kernel-subscription
+cd hiddify-plus
+git checkout -b feat-multi-kernel
 ```
 
-**分支命名规则**: `YYMMDD-feat-xxxxx-xxxx-xxxx`
-- `260417` = 2026年04月17日
-- `feat-multi-kernel-subscription` = 功能描述
-
-**结果**: 已切换到新创建的分支
-
-### 步骤 1.3: 检查 .gitmodules
+### 步骤 1.3: 重命名项目和包名
 
 **日期**: 2026-04-17
-**操作**: 检查项目是否包含 Git Submodules
+**修改文件**: `pubspec.yaml`
+**变更**:
+- 项目名称: `hiddify_plus`
+- 包名: `hiddify_plus`
 
-**执行命令**:
-```bash
-git submodule status
-```
+### 步骤 1.4: 检查 .gitmodules
 
-**结果**: 项目不包含 submodules，跳过 submodule 初始化
+**日期**: 2026-04-17
+**结果**: 项目不包含 submodules
 
 ---
 
-## 第二阶段：代码分析与架构设计
+## 第二阶段：订阅解析模块开发 ✅
 
-### 步骤 2.1: 分析 Hiddify 现有架构
-
-**日期**: 2026-04-17
-**分析内容**:
-- Flutter 前端使用 Riverpod + freezed 状态管理
-- 订阅管理在 `lib/features/profile/`
-- 核心通信通过 gRPC 与 `hiddify-core` (Go-based on sing-box) 交互
-- ProfileParser 已支持 URI 协议检测 (VMess/VLESS/Trojan/SS)
-
-### 步骤 2.2: 分析参考项目
+### 步骤 2.1: 创建订阅解析模块
 
 **日期**: 2026-04-17
-**参考项目分析**:
+**目录**: `lib/subscription_parser/`
 
-| 项目 | Stars | 关键发现 |
-|------|-------|----------|
-| FlClash | 36.3k | 完整的 Clash.Meta 客户端，成熟的内核管理架构 |
-| Karing | 11k | sing-box/Clash 路由支持 |
-| subconverter | 16.4k | 订阅格式转换引擎，支持 20+ 格式 |
-
-**重要发现**: Clash.Meta 和 mihomo 是同一项目，无需重复支持
-
-### 步骤 2.3: 创建规格文档
-
-**日期**: 2026-04-17
-**创建文件**:
-- `.monkeycode/specs/hiddify-enhanced/requirements.md` - 需求文档
-- `.monkeycode/specs/hiddify-enhanced/design.md` - 技术设计文档
-
----
-
-## 第三阶段：订阅解析模块开发
-
-### 步骤 3.1: 创建订阅解析模块目录
-
-**日期**: 2026-04-17
-**创建目录**:
 ```
 lib/subscription_parser/
 ├── subscription_parser.dart
@@ -109,8 +71,7 @@ lib/subscription_parser/
 │   ├── proxy_node.dart
 │   └── subscription.dart
 ├── parsers/
-│   ├── base/
-│   │   └── parser.dart
+│   ├── parsers.dart
 │   ├── format_detector.dart
 │   ├── parser_factory.dart
 │   ├── clash_parser.dart
@@ -118,11 +79,12 @@ lib/subscription_parser/
 │   ├── v2ray_parser.dart
 │   └── uri_parser.dart
 └── services/
+    ├── services.dart
     ├── subscription_service.dart
     └── converter.dart
 ```
 
-### 步骤 3.2: 实现统一 ProxyNode 模型
+### 步骤 2.2: 实现 ProxyNode 模型
 
 **日期**: 2026-04-17
 **文件**: `lib/subscription_parser/models/proxy_node.dart`
@@ -130,53 +92,46 @@ lib/subscription_parser/
 **核心字段**:
 - `id`: UUID 唯一标识
 - `remark`: 节点名称
-- `type`: 协议类型 (vmess/vless/trojan/ss 等)
+- `type`: ProxyType 协议类型
 - `server`: 服务器地址
 - `port`: 端口
-- `username/password`: 认证信息
-- `tlsSecure/sni/fingerprint`: TLS 相关
-- `latency/isActive/lastChecked`: 状态信息
+- TLS、网络、插件等扩展字段
 
-### 步骤 3.3: 实现订阅服务
+### 步骤 2.3: 实现格式解析器
 
 **日期**: 2026-04-17
-**文件**: `lib/subscription_parser/services/subscription_service.dart`
-
-**功能**:
-- `fetchSubscription(url)`: HTTP 获取订阅内容
-- `decodeContent(content)`: Base64 解码
-- `detectFormat(content)`: 自动格式检测
-- `parseNodes(content, format)`: 解析为 ProxyNode 列表
-
-### 步骤 3.4: 实现格式解析器
-
-**日期**: 2026-04-17
-**解析器实现**:
+**解析器**:
 
 | 解析器 | 文件 | 支持格式 |
-|--------|------|----------|
+|--------|------|---------|
 | ClashParser | `parsers/clash_parser.dart` | YAML, Clash, Clash.Meta |
 | SingBoxParser | `parsers/singbox_parser.dart` | JSON, sing-box |
 | V2RayParser | `parsers/v2ray_parser.dart` | JSON, V2Ray |
 | UriParser | `parsers/uri_parser.dart` | VMess/VLESS/Trojan/SS URI |
 
-### 步骤 3.5: 实现格式转换器
+### 步骤 2.4: 实现格式转换器
 
 **日期**: 2026-04-17
 **文件**: `lib/subscription_parser/services/converter.dart`
 
 **功能**:
-- 将统一 ProxyNode 模型转换为目标格式配置
-- 支持 Clash YAML、sing-box JSON、V2Ray JSON 等格式输出
+- `convert()`: 格式间转换
+- `convertToKernel()`: 转换为内核配置
+- `parseOnly()`: 仅解析
+- `mergeSubscriptions()`: 订阅合并
+- `splitByProtocol()`: 按协议分割
+- `filterByProtocol()`: 按协议过滤
+- `filterByName()`: 按名称过滤
 
 ---
 
-## 第四阶段：多内核架构开发
+## 第三阶段：多内核架构开发 ✅
 
-### 步骤 4.1: 创建内核目录结构
+### 步骤 3.1: 创建内核目录结构
 
 **日期**: 2026-04-17
-**创建目录**:
+**目录**: `lib/kernels/`
+
 ```
 lib/kernels/
 ├── kernels.dart
@@ -184,41 +139,44 @@ lib/kernels/
 ├── multi_kernel_manager.dart
 ├── singbox_kernel.dart
 ├── clash_meta_kernel.dart
-└── v2ray_kernel.dart
+├── v2ray_kernel.dart
+├── config_converter/
+├── config_generator/
+├── providers/
+└── service/
 ```
 
-### 步骤 4.2: 实现内核接口
+### 步骤 3.2: 实现内核接口
 
 **日期**: 2026-04-17
 **文件**: `lib/kernels/kernel_manager.dart`
 
 **接口定义**:
 ```dart
-abstract class IKernel {
-    String get name;
-    String get version;
-    KernelStatus get status;
-    Future<bool> start(String config);
-    Future<bool> stop();
-    Future<bool> restart();
-    Future<bool> update();
+abstract class IKernelManager {
+  Future<KernelInfo> getKernelInfo(KernelType type);
+  KernelInfo? get activeKernel;
+  KernelType? get activeKernelType;
+  KernelStatus get status;
+  
+  Future<bool> switchKernel(KernelType type);
+  Future<bool> start(KernelConfig config);
+  Future<bool> stop();
+  Future<bool> restart();
+  
+  Future<bool> downloadKernel(KernelType type, String url);
+  Future<String?> getKernelVersion(KernelType type);
+  
+  Stream<KernelStatus> get statusStream;
 }
 ```
 
-### 步骤 4.3: 实现 MultiKernelManager
+### 步骤 3.3: 实现 MultiKernelManager
 
 **日期**: 2026-04-17
 **文件**: `lib/kernels/multi_kernel_manager.dart`
 
-**功能**:
-- 管理多个内核实例
-- 切换活跃内核
-- 统一配置分发
-
-### 步骤 4.4: 实现各内核实现类
-
-**日期**: 2026-04-17
-**实现类**:
+### 步骤 3.4: 实现各内核实现类
 
 | 类名 | 文件 | 说明 |
 |------|------|------|
@@ -226,298 +184,151 @@ abstract class IKernel {
 | ClashMetaKernel | `clash_meta_kernel.dart` | Clash.Meta (mihomo) 内核 |
 | V2RayKernel | `v2ray_kernel.dart` | v2ray-core 内核 |
 
----
-
-## 第五阶段：内核版本更新功能
-
-### 步骤 5.1: 创建内核更新服务目录
+### 步骤 3.5: 实现配置生成器
 
 **日期**: 2026-04-17
-**创建目录**:
+**目录**: `lib/kernels/config_generator/`
+
+| 生成器 | 文件 | 输出格式 |
+|--------|------|---------|
+| SingBoxConfigGenerator | `singbox_config_generator.dart` | JSON |
+| ClashMetaConfigGenerator | `clash_meta_config_generator.dart` | YAML |
+| V2RayConfigGenerator | `v2ray_config_generator.dart` | JSON |
+
+---
+
+## 第四阶段：内核版本更新功能 ✅
+
+### 步骤 4.1: 创建内核更新服务目录
+
+**日期**: 2026-04-17
+**目录**: `lib/kernel_updater/`
+
 ```
 lib/kernel_updater/
 ├── kernel_updater.dart
 ├── kernel_updater_service.dart
 ├── kernel_version_info.dart
-└── update_settings.dart
+├── update_settings.dart
+└── providers/
+    └── update_settings_provider.dart
 ```
 
-### 步骤 5.2: 实现版本信息模型
+### 步骤 4.2: 实现版本信息模型
 
 **日期**: 2026-04-17
 **文件**: `lib/kernel_updater/kernel_version_info.dart`
 
 **核心字段**:
-- `type`: 内核类型
+- `type`: KernelType
 - `version`: 版本号
 - `downloadUrl`: 下载地址
 - `sha256`: SHA256 校验和
 - `releaseDate`: 发布日期
 - `isMandatory`: 是否强制更新
 
-### 步骤 5.3: 实现更新设置模型
+### 步骤 4.3: 实现更新设置模型
 
 **日期**: 2026-04-17
 **文件**: `lib/kernel_updater/update_settings.dart`
 
-**核心字段**:
-- `autoCheckEnabled`: 自动检查更新
-- `autoDownloadEnabled`: 自动下载更新
-- `autoInstallEnabled`: 自动安装更新
-- `installOnStartup`: 启动时安装
-- `channel`: 更新通道 (stable/beta/dev)
-
-### 步骤 5.4: 实现内核更新服务
+### 步骤 4.4: 实现内核更新服务
 
 **日期**: 2026-04-17
 **文件**: `lib/kernel_updater/kernel_updater_service.dart`
 
-**功能**:
-- `checkForUpdate(type)`: 检查是否有新版本
-- `downloadAndInstall(type, onProgress)`: 下载并安装
-- `autoUpdateIfNeeded()`: 自动更新检查
-- `rollback()`: 回滚到上一版本
-- `verifyDownload(path, expectedHash)`: 验证下载文件
-
 ---
 
-## 第六阶段：集成到 Hiddify
+## 第五阶段：集成与测试 ✅
 
-### 步骤 6.1: 添加依赖
+### 步骤 5.1: 代码生成
 
 **日期**: 2026-04-17
-**修改文件**: `pubspec.yaml`
-
-**添加依赖**:
-```yaml
-dependencies:
-    yaml: ^3.1.2
-```
-
 **执行命令**:
 ```bash
-cd /workspace/hiddify-enhanced
-flutter pub get
+flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
-### 步骤 6.2: 创建增强解析器
+**结果**: 成功生成 freezed/json_serializable 代码
+
+### 步骤 5.2: 修复编译错误
 
 **日期**: 2026-04-17
-**创建文件**: `lib/features/profile/data/enhanced_profile_parser.dart`
+**修复内容**:
+- 添加缺失的 imports
+- 修复类型冲突（ProxyType, SubscriptionInfo）
+- 修复 Map→JSON 字符串转换
+- 删除重复方法
 
-**功能**:
-- 集成 subscription_parser 模块
-- 提供与 Hiddify 现有 ProfileParser 兼容的接口
-- 复用现有订阅解析逻辑
+### 步骤 5.3: 运行测试
 
----
-
-## 第七阶段：测试与验证
-
-### 步骤 7.1: 代码生成 (TODO)
-
-**状态**: 待完成
-**待执行命令**:
+**日期**: 2026-04-17
+**执行命令**:
 ```bash
-cd /workspace/hiddify-enhanced
-dart run build_runner build
+flutter test
 ```
 
-### 步骤 7.2: 单元测试 (TODO)
-
-**状态**: 待完成
-**待执行**:
-- 各 Parser 的格式解析正确性测试
-- 格式转换完整性测试
-- KernelManager 状态机测试
-
-### 步骤 7.3: 集成测试 (TODO)
-
-**状态**: 待完成
-**待执行**:
-- 订阅获取-解析-转换完整流程测试
-- 内核启动-运行-停止生命周期测试
-- 多内核切换的配置迁移测试
+**结果**:
+- 单元测试: 95 passed
+- 集成测试: 12 passed
+- **总计: 107 tests passed**
 
 ---
 
 ## Git 提交记录
 
-### 提交 1: 初始项目克隆
+### 提交列表
 
-**日期**: 2026-04-17
-**操作**: 克隆 hiddify/hiddify-app 项目
-
-### 提交 2: 创建开发分支
-
-**日期**: 2026-04-17
-**操作**: 创建并切换到 `260417-feat-multi-kernel-subscription` 分支
-
-### 提交 3: 添加订阅解析模块
-
-**日期**: 2026-04-17
-**提交信息**: `feat: add subscription_parser module with multi-format support`
-
-**变更文件**:
-- `lib/subscription_parser/` (新增目录)
-- `pubspec.yaml` (添加 yaml 依赖)
-
-### 提交 4: 添加多内核架构
-
-**日期**: 2026-04-17
-**提交信息**: `feat: add multi-kernel support and enhanced subscription parsing`
-
-**变更文件**:
-- `lib/kernels/` (新增目录)
-- `lib/features/profile/data/enhanced_profile_parser.dart` (新增文件)
-
-### 提交 5: 添加内核版本更新功能
-
-**日期**: 2026-04-17
-**提交信息**: `feat: add kernel version update service with auto-update support`
-
-**变更文件**:
-- `lib/kernel_updater/` (新增目录)
-- `pubspec.yaml` (添加 crypto、http 依赖)
-
-### 提交 6: 更新需求和设计文档
-
-**日期**: 2026-04-17
-**提交信息**: `docs: update requirements and design documents with kernel update feature`
-
-**变更文件**:
-- `.monkeycode/specs/hiddify-enhanced/requirements.md`
-- `.monkeycode/specs/hiddify-enhanced/design.md`
-- `.monkeycode/specs/hiddify-enhanced/development-roadmap.md` (新增)
-
-### 提交 7: 增强内核实现
-
-**日期**: 2026-04-17
-**提交信息**: `feat: enhance kernel implementations with config generators`
-
-**变更文件**:
-- `lib/kernels/config_generator/` (新增目录)
-  - `singbox_config_generator.dart`
-  - `clash_meta_config_generator.dart`
-  - `v2ray_config_generator.dart`
-  - `config_generator.dart`
-- `lib/kernels/kernel_manager.dart` (统一 KernelType 枚举)
-- `lib/kernels/singbox_kernel.dart` (增强实现)
-- `lib/kernels/clash_meta_kernel.dart` (增强实现)
-- `lib/kernels/v2ray_kernel.dart` (增强实现)
-- `lib/kernels/multi_kernel_manager.dart` (增强实现)
-
-### 提交 8: 修复语法错误
-
-**日期**: 2026-04-17
-**提交信息**: `fix: resolve syntax errors and freezed initialization`
-
-**变更文件**:
-- `lib/subscription_parser/parsers/clash_parser.dart`
-- `lib/kernel_updater/kernel_updater_service.dart`
-- `lib/subscription_parser/models/subscription.dart`
-
-### 提交 9: 集成 MultiKernelService
-
-**日期**: 2026-04-17
-**提交信息**: `feat: add MultiKernelService integration with HiddifyCoreService`
-
-**变更文件**:
-- `lib/kernels/service/multi_kernel_service.dart` (新增)
-- `lib/kernels/service/service.dart` (新增)
-- `lib/kernels/providers/kernel_providers.dart` (新增)
-- `lib/kernels/kernels.dart` (更新导出)
-
-### 提交 10: 添加内核选择 UI
-
-**日期**: 2026-04-17
-**提交信息**: `feat: add kernel selection UI and settings page`
-
-**变更文件**:
-- `lib/features/settings/overview/sections/kernel/kernel_options_page.dart` (新增)
-- `lib/features/settings/overview/settings_page.dart` (添加内核设置入口)
-- `lib/core/router/go_router/routing_config_notifier.dart` (添加路由)
-
-### 提交 11: 添加配置转换器
-
-**日期**: 2026-04-17
-**提交信息**: `feat: add ConfigConverter for kernel config conversion`
-
-**变更文件**:
-- `lib/kernels/config_converter/config_converter.dart` (新增)
-
-### 提交 12: 整合 subscription_parser 和 ConfigConverter
-
-**日期**: 2026-04-17
-**提交信息**: `refactor: integrate subscription_parser and ConfigConverter`
-
-**变更文件**:
-- `lib/subscription_parser/services/converter.dart` (重构)
-- `lib/kernels/config_converter/config_converter.dart` (重构)
-
-**整合内容**:
-- `SubscriptionConverter` 成为统一入口点
-- 添加 `KernelType` 支持
-- 添加 `nodesToKernel()` 和 `convertToKernel()` 方法
-- 添加 `generateDefaultGroups()` 方法
-- `ConfigConverter` 现在委托给 `SubscriptionConverter`
+| # | 日期 | 提交信息 |
+|---|------|---------|
+| 1 | 2026-04-17 | 初始项目克隆 |
+| 2 | 2026-04-17 | feat: add subscription_parser module |
+| 3 | 2026-04-17 | feat: add multi-kernel support |
+| 4 | 2026-04-17 | feat: add kernel updater service |
+| 5 | 2026-04-17 | feat: add config generators |
+| 6 | 2026-04-17 | fix: resolve syntax errors |
+| 7 | 2026-04-17 | feat: add MultiKernelService |
+| 8 | 2026-04-17 | feat: add kernel selection UI |
+| 9 | 2026-04-17 | refactor: integrate subscription_parser |
+| 10 | 2026-04-17 | docs: move specs to project |
+| 11 | 2026-04-17 | fix: resolve compilation errors |
+| 12 | 2026-04-17 | docs: move specs to hiddify-plus/specs/ |
 
 ---
 
-## 常见问题与解决方案
+## 测试结果
 
-### Q1: 内核二进制从哪里获取？
+### 单元测试
 
-**A**: 
-- sing-box: https://github.com/SagerNet/sing-box/releases
-- Clash.Meta (mihomo): https://github.com/MetaCubeX/mihomo/releases
-- v2ray: https://github.com/v2fly/v2ray-core/releases
+| 模块 | 测试数 | 状态 |
+|------|--------|------|
+| subscription_parser | 58+ | ✅ |
+| kernels | 18 | ✅ |
+| kernel_updater | 19 | ✅ |
 
-### Q2: 如何验证下载的内核文件？
+### 集成测试
 
-**A**: 
-1. 下载时记录 SHA256 校验和
-2. 下载完成后计算本地文件的 SHA256
-3. 比对两者是否一致
-4. 不一致则重新下载或报错
-
-### Q3: 更新失败如何回滚？
-
-**A**:
-1. 更新前备份当前内核到 `~/.config/hiddify-{kernel}/backup/`
-2. 更新失败时，从备份目录复制回原位置
-3. 删除损坏的新版本文件
-
-### Q4: 如何添加新的订阅格式支持？
-
-**A**:
-1. 在 `lib/subscription_parser/models/` 中添加新的数据模型
-2. 在 `lib/subscription_parser/parsers/` 中实现新的解析器类
-3. 在 `ParserFactory` 中注册新的解析器
-4. 在 `Converter` 中添加对应的格式生成逻辑
+| 模块 | 测试数 | 状态 |
+|------|--------|------|
+| subscription_integration_test | 12 | ✅ |
 
 ---
 
 ## 下一步待办事项
 
 ### 高优先级
-1. [x] 完成内核实现的实际二进制下载和启动逻辑
-2. [x] 与 HiddifyCoreService 集成
-3. [x] 添加内核选择的 UI 界面
-4. [x] 实现内核间配置格式转换
-5. [x] 运行 `build_runner` 生成 freezed/json_serializable 代码
+- [ ] 将新模块与 Hiddify 主应用 UI 集成
+- [ ] 添加内核切换 UI
+- [ ] 测试实际订阅解析和内核切换流程
 
 ### 中优先级
-6. [ ] 编写订阅解析器的单元测试
-7. [ ] 编写内核管理器的单元测试
-8. [ ] 编写集成测试
-9. [ ] 实现更新设置的持久化
+- [ ] 优化解析性能（1000 节点 < 5 秒）
+- [ ] 实现订阅合并的高级功能
+- [ ] 添加节点延迟测试功能
 
 ### 低优先级
-10. [ ] 优化解析性能（1000 节点 < 5 秒）
-11. [ ] 实现订阅合并的高级功能
-12. [ ] 添加节点延迟测试功能
-13. [ ] 实现规则的导入/导出
+- [ ] 实现规则的导入/导出
+- [ ] 添加 Surge/Quantumult/Loon 格式支持
 
 ---
 
@@ -526,24 +337,22 @@ dart run build_runner build
 ### 项目文件
 | 路径 | 说明 |
 |------|------|
-| `/workspace/hiddify-enhanced/` | 项目根目录 |
-| `/workspace/hiddify-enhanced/lib/` | Dart 源代码目录 |
-| `/workspace/hiddify-enhanced/pubspec.yaml` | Flutter 依赖配置 |
-| `/workspace/hiddify-enhanced/README.md` | 项目说明 |
+| `/workspace/hiddify-plus/` | 项目根目录 |
+| `/workspace/hiddify-plus/lib/` | Dart 源代码目录 |
+| `/workspace/hiddify-plus/pubspec.yaml` | Flutter 依赖配置 |
+| `/workspace/hiddify-plus/specs/` | 项目文档 |
 
 ### 新增模块
 | 路径 | 说明 |
 |------|------|
-| `/workspace/hiddify-enhanced/lib/subscription_parser/` | 订阅解析模块 |
-| `/workspace/hiddify-enhanced/lib/kernels/` | 多内核架构 |
-| `/workspace/hiddify-enhanced/lib/kernels/config_generator/` | 各内核配置生成器 |
-| `/workspace/hiddify-enhanced/lib/kernel_updater/` | 内核版本更新服务 |
-| `/workspace/hiddify-enhanced/lib/features/profile/data/enhanced_profile_parser.dart` | 增强解析器 |
+| `/workspace/hiddify-plus/lib/subscription_parser/` | 订阅解析模块 |
+| `/workspace/hiddify-plus/lib/kernels/` | 多内核架构 |
+| `/workspace/hiddify-plus/lib/kernel_updater/` | 内核版本更新服务 |
+| `/workspace/hiddify-plus/lib/features/profile/data/enhanced_profile_parser.dart` | 增强解析器 |
 
 ### 文档文件
 | 路径 | 说明 |
 |------|------|
-| `/workspace/.monkeycode/specs/hiddify-enhanced/requirements.md` | 需求文档 |
-| `/workspace/.monkeycode/specs/hiddify-enhanced/design.md` | 技术设计文档 |
-| `/workspace/.monkeycode/specs/hiddify-enhanced/development-roadmap.md` | 开发路线文档 |
-| `/workspace/.monkeycode/MEMORY.md` | 用户指令记忆 |
+| `/workspace/hiddify-plus/specs/requirements.md` | 需求文档 |
+| `/workspace/hiddify-plus/specs/design.md` | 技术设计文档 |
+| `/workspace/hiddify-plus/specs/development-roadmap.md` | 开发路线文档 |

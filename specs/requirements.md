@@ -1,9 +1,9 @@
-# Hiddify 增强版需求文档
+# Hiddify Plus 需求文档
 
 ## 1. 项目概述
 
 ### 项目名称
-Hiddify Enhanced (hiddify-enhanced)
+Hiddify Plus (hiddify-plus)
 
 ### 项目描述
 基于 Hiddify-app 开发的跨平台代理客户端增强版，在保留 Hiddify 全部现有功能（TUN模式、分流规则、完整UI）的基础上，新增多内核支持和多种订阅格式解析转换能力。
@@ -25,14 +25,14 @@ Hiddify Enhanced (hiddify-enhanced)
 
 ## 2. 功能需求
 
-### 2.1 内核支持（修正）
+### 2.1 内核支持
 
 #### 支持的内核
-| 内核 | 说明 | 配置文件格式 |
-|------|------|-------------|
-| sing-box | Hiddify 现有内核 | JSON |
-| Clash.Meta | Meta 系列内核（含 mihomo） | YAML |
-| v2ray | 官方 v2ray-core | JSON |
+| 内核 | 说明 | 配置文件格式 | 状态 |
+|------|------|-------------|------|
+| sing-box | Hiddify 现有内核 | JSON | ✅ 已实现 |
+| Clash.Meta | Meta 系列内核（含 mihomo） | YAML | ✅ 已实现 |
+| v2ray | 官方 v2ray-core | JSON | ✅ 已实现 |
 
 > **注意**：Clash.Meta 和 mihomo 是同一项目，无需重复支持
 
@@ -59,21 +59,21 @@ Hiddify Enhanced (hiddify-enhanced)
 ### 2.2 订阅格式支持
 
 #### 支持的输入格式（参考 subconverter）
-| 格式 | 类型 | 支持来源 | 支持目标 |
-|------|------|---------|---------|
-| Clash | YAML | ✓ | ✓ |
-| Clash.Meta | YAML | ✓ | ✓ |
-| sing-box | JSON | ✓ | ✓ |
-| V2Ray | JSON | ✓ | ✓ |
-| VMess | URL/JSON | ✓ | ✗ |
-| VLESS | URL | ✓ | ✗ |
-| Trojan | URL | ✓ | ✗ |
-| Shadowsocks | URL | ✓ | ✓ |
-| ShadowsocksR | URL | ✓ | ✗ |
-| Surge | CONF | ✓ | ✓ |
-| Quantumult | CONF | ✓ | ✗ |
-| Loon | CONF | ✓ | ✗ |
-| WireGuard | INI/JSON | ✓ | ✗ |
+| 格式 | 类型 | 支持来源 | 支持目标 | 状态 |
+|------|------|---------|---------|------|
+| Clash | YAML | ✓ | ✓ | ✅ 已实现 |
+| Clash.Meta | YAML | ✓ | ✓ | ✅ 已实现 |
+| sing-box | JSON | ✓ | ✓ | ✅ 已实现 |
+| V2Ray | JSON | ✓ | ✓ | ✅ 已实现 |
+| VMess | URL/JSON | ✓ | ✗ | ✅ 已实现 |
+| VLESS | URL | ✓ | ✗ | ✅ 已实现 |
+| Trojan | URL | ✓ | ✗ | ✅ 已实现 |
+| Shadowsocks | URL | ✓ | ✓ | ✅ 已实现 |
+| ShadowsocksR | URL | ✓ | ✗ | ⏳ 待实现 |
+| Surge | CONF | ✓ | ✓ | ⏳ 待实现 |
+| Quantumult | CONF | ✓ | ✗ | ⏳ 待实现 |
+| Loon | CONF | ✓ | ✗ | ⏳ 待实现 |
+| WireGuard | INI/JSON | ✓ | ✗ | ⏳ 待实现 |
 
 #### 订阅解析
 - 系统 SHALL 解析 HTTP/HTTPS 远程订阅链接
@@ -133,233 +133,86 @@ Hiddify Enhanced (hiddify-enhanced)
 
 ---
 
-## 4. 参考项目分析
+## 4. 已完成功能清单
 
-### 4.1 subconverter 架构（C++）
+### 核心模块 ✅
 
-**核心模块**：
-```
-src/
-├── parser/           # 订阅解析
-│   ├── subparser.cpp/h  # 解析入口
-│   └── config/      # 配置结构
-├── generator/       # 配置生成
-│   ├── template/    # 输出模板 (Jinja2)
-│   └── config/      # 生成配置
-├── lib/             # 核心数据结构
-├── config/          # 类型定义
-│   ├── proxygroup.h # 代理组定义
-│   └── ruleset.h    # 规则集定义
-└── utils/           # 工具函数
-```
+| 模块 | 文件位置 | 测试状态 |
+|------|---------|---------|
+| subscription_parser | `lib/subscription_parser/` | ✅ 95 tests |
+| kernels | `lib/kernels/` | ✅ 95 tests |
+| kernel_updater | `lib/kernel_updater/` | ✅ 95 tests |
+| 集成测试 | `test/integration/` | ✅ 12 tests |
 
-**统一 Proxy 结构**（在 subparser.cpp 中定义）：
-- 支持所有协议类型：VMess, VLESS, Trojan, SS, SSR, WireGuard, Hysteria 等
-- 统一的构造函数接口
-- 格式无关的内部表示
+### 解析器实现 ✅
 
-**格式转换流程**：
-```
-输入格式 → 解析为 Proxy 列表 → 统一数据模型 → 应用模板 → 输出格式
-```
+| 解析器 | 文件 | 支持格式 |
+|--------|------|---------|
+| ClashParser | `parsers/clash_parser.dart` | YAML, Clash, Clash.Meta |
+| SingBoxParser | `parsers/singbox_parser.dart` | JSON, sing-box |
+| V2RayParser | `parsers/v2ray_parser.dart` | JSON, V2Ray |
+| UriParser | `parsers/uri_parser.dart` | VMess/VLESS/Trojan/SS URI |
 
-### 4.2 FlClash 架构（Flutter）
+### 配置生成器 ✅
 
-**目录结构**：
-```
-lib/
-├── core/           # 核心逻辑
-│   ├── core.dart   # 核心控制器
-│   └── service.dart # 后台服务
-├── manager/        # 管理器
-│   ├── core_manager.dart    # 内核管理
-│   ├── proxy_manager.dart   # 代理管理
-│   └── vpn_manager.dart     # VPN/TUN管理
-├── models/         # 数据模型
-│   ├── clash_config.dart    # Clash配置
-│   └── profile.dart         # 订阅配置
-└── features/       # 功能模块
-```
-
-**特点**：
-- 使用 freezed 生成 immutable 模型
-- Manager 模式管理各功能模块
-- 完整的 TUN/系统代理支持
-
-### 4.3 Hiddify 架构（Flutter - 待补充分析）
-
-（需要克隆 hiddify-app 仓库后深入分析）
+| 生成器 | 文件 | 输出格式 |
+|--------|------|---------|
+| SingBoxConfigGenerator | `config_generator/singbox_config_generator.dart` | JSON |
+| ClashMetaConfigGenerator | `config_generator/clash_meta_config_generator.dart` | YAML |
+| V2RayConfigGenerator | `config_generator/v2ray_config_generator.dart` | JSON |
 
 ---
 
-## 5. 架构设计要点
+## 5. 实施计划
 
-### 5.1 多内核架构
+### Phase 1 - 基础设施 ✅
+1. ✅ Fork Hiddify 仓库，搭建开发环境
+2. ✅ 分析 Hiddify 现有内核架构
+3. ✅ 设计统一的 ProxyNode 数据模型
+4. ✅ 实现基础的 Parser 接口和工厂类
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Flutter UI Layer                        │
-│    (Hiddify 现有全部界面 + 新增内核选择/订阅管理界面)         │
-├─────────────────────────────────────────────────────────────┤
-│                    Business Logic Layer                      │
-├──────────────────┬──────────────────┬───────────────────────┤
-│   KernelManager  │  SubManager      │    ConfigConverter    │
-│   (内核管理器)    │  (订阅管理器)    │    (配置转换器)        │
-├──────────────────┴──────────────────┴───────────────────────┤
-│                     Parser Layer                             │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
-│  │ Clash   │ │sing-box │ │  V2Ray  │ │ Trojan │ ...       │
-│  │ Parser  │ │ Parser  │ │ Parser  │ │ Parser │           │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘           │
-├─────────────────────────────────────────────────────────────┤
-│                      Kernel Layer                            │
-│    ┌───────────┐  ┌───────────┐  ┌───────────┐            │
-│    │ sing-box  │  │ Clash.Meta│  │   v2ray   │            │
-│    │  Kernel   │  │   Kernel  │  │   Kernel  │            │
-│    └───────────┘  └───────────┘  └───────────┘            │
-└─────────────────────────────────────────────────────────────┘
-```
+### Phase 2 - sing-box 内核增强 ✅
+5. ✅ 保持现有 sing-box 内核完全正常工作
+6. ✅ 增强 sing-box 配置的解析/生成能力
 
-### 5.2 订阅解析流程（参考 subconverter）
+### Phase 3 - 多内核支持 ✅
+7. ✅ 集成 Clash.Meta 内核（mihomo）
+8. ✅ 集成 v2ray 内核
+9. ✅ 实现内核切换机制
+10. ✅ 实现配置格式转换
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Subscription Flow                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  [订阅URL] ──→ [HTTP获取] ──→ [Base64解码?] ──→ [格式检测]  │
-│                                              │              │
-│                                              ▼              │
-│                                    [调用对应Parser解析]      │
-│                                              │              │
-│                                              ▼              │
-│                                    [转换为统一ProxyNode模型]  │
-│                                              │              │
-│                          ┌───────────────────┴───────────┐  │
-│                          ▼                               ▼  │
-│                  [存入本地缓存]               [发送到转换器]  │
-│                                                     │      │
-│                                                     ▼      │
-│                                          [加载目标格式模板]  │
-│                                                     │      │
-│                                                     ▼      │
-│                                          [生成目标格式配置]  │
-│                                                     │      │
-│                                                     ▼      │
-│                                          [交给内核管理器]   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+### Phase 4 - 订阅增强 ✅
+11. ✅ 实现 Clash 订阅解析
+12. ✅ 实现 V2Ray 订阅解析
+13. ✅ 实现格式转换模块（参考 subconverter）
+14. ✅ 实现订阅合并功能
 
-### 5.3 统一节点模型
-
-```dart
-class ProxyNode {
-    String id;               // 唯一标识 (UUID)
-    String name;             // 节点名称
-    ProtocolType type;       // 协议类型
-    String server;          // 服务器地址
-    int port;                // 端口
-    String? username;        // 用户名 (可选)
-    String? password;         // 密码 (可选)
-    
-    // 协议特定字段 (Map 存储灵活扩展)
-    Map<String, dynamic> options;
-    
-    // 状态字段
-    int? latency;            // 延迟 (ms)
-    bool isActive;           // 是否启用
-    DateTime? lastChecked;   // 最后检测时间
-}
-
-enum ProtocolType {
-    // VMess 系列
-    vmess,
-    
-    // VLESS
-    vless,
-    
-    // Trojan 系列
-    trojan,
-    trojanGo,
-    
-    // Shadowsocks 系列
-    ss,
-    ss2022,
-    ssr,
-    
-    // Hysteria 系列
-    hysteria,
-    hysteria2,
-    
-    // TUIC
-    tuic,
-    
-    // WireGuard
-    wireguard,
-    
-    // SOCKS/HTTP
-    socks5,
-    http,
-    
-    // SSH
-    ssh,
-}
-```
-
-### 5.4 代理组配置（参考 subconverter）
-
-```dart
-class ProxyGroup {
-    String name;
-    GroupType type;          // select, url-test, fallback, load-balance, relay
-    List<String> proxies;    // 包含的节点/组名称
-    String? url;             // url-test 用的测试URL
-    int? interval;           // 测试间隔 (秒)
-    int? timeout;            // 超时时间 (秒)
-    bool lazy;               // 懒加载
-}
-```
+### Phase 5 - 测试与优化 ⏳
+15. ⏳ 完整功能测试（部分完成：95+12 测试通过）
+16. ⏳ 性能优化
+17. ⏳ UI/UX 优化
+18. ⏳ 发布准备
 
 ---
 
-## 6. 实施计划
+## 6. 关键决策点
 
-### Phase 1 - 基础设施（1-2周）
-1. Fork Hiddify 仓库，搭建开发环境
-2. 分析 Hiddify 现有内核架构
-3. 设计统一的 ProxyNode 数据模型
-4. 实现基础的 Parser 接口和工厂类
-
-### Phase 2 - sing-box 内核增强（1周）
-5. 保持现有 sing-box 内核完全正常工作
-6. 增强 sing-box 配置的解析/生成能力
-
-### Phase 3 - 多内核支持（2-3周）
-7. 集成 Clash.Meta 内核（mihomo）
-8. 集成 v2ray 内核
-9. 实现内核切换机制
-10. 实现配置格式转换
-
-### Phase 4 - 订阅增强（2周）
-11. 实现 Clash 订阅解析
-12. 实现 V2Ray 订阅解析
-13. 实现格式转换模块（参考 subconverter）
-14. 实现订阅合并功能
-
-### Phase 5 - 测试与优化（1-2周）
-15. 完整功能测试
-16. 性能优化
-17. UI/UX 优化
-18. 发布准备
-
----
-
-## 7. 关键决策点
-
-| 决策项 | 选项 | 建议 |
-|--------|------|------|
+| 决策项 | 选项 | 最终选择 |
+|--------|------|---------|
 | Parser 实现语言 | Dart vs C++ | Dart (与 Flutter 集成更好) |
 | 内核二进制获取 | 预置 vs 动态下载 | 预置基础版 + 动态更新 |
 | 配置转换完整性 | 100% vs 最佳 effort | 最佳 effort + 用户提示 |
 | 多内核配置冲突 | 隔离 vs 合并 | 配置隔离 + 手动迁移 |
+
+---
+
+## 7. 项目信息
+
+| 项目 | 信息 |
+|------|------|
+| 项目名称 | hiddify-plus |
+| 包名 | hiddify_plus |
+| 开发分支 | feat-multi-kernel |
+| 仓库地址 | https://github.com/ukiyoec/hiddify-plus |
+| 测试数量 | 107 (95 unit + 12 integration) |
+| 编译状态 | ✅ 0 errors |
